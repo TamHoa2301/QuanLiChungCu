@@ -1,5 +1,7 @@
 
 # Create your models here.
+
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from ckeditor.fields import RichTextField
@@ -42,3 +44,17 @@ class Report(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
+class LoaiKhaoSoat(models.Model):
+    name = models.CharField(max_length=255)
+
+
+
+class KhaoSat(BaseModel):
+    name = models.CharField(max_length=255)
+    loaikhaosoat = models.ForeignKey(LoaiKhaoSoat, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+
+class CauHoi(models.Model):
+    title = models.CharField(max_length=255)
+    khaosoat = models.ForeignKey(KhaoSat, on_delete=models.CASCADE)
