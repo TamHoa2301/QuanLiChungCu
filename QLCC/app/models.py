@@ -1,16 +1,40 @@
-
 # Create your models here.
-
-
+import cloudinary
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from ckeditor.fields import RichTextField
 from cloudinary.models import CloudinaryField
 
 
+class Role(models.Model):
+    name = models.CharField(max_length=50, null=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Location(models.Model):
+    name = models.CharField(max_length=50, null=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Apartment(models.Model):
+    location = models.ForeignKey(Location, on_delete=models.SET_NULL, null=True)
+    apartmentName = models.CharField(max_length=50, null=False)
+    isFull = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.apartmentName
+
+
 class User(AbstractUser):
     avatar = CloudinaryField(null=True)
-    phoneNumber =models.CharField(max_length=10)
+    dateofBirth = models.DateTimeField(null=True, blank=True)
+    phoneNumber = models.CharField(max_length=10, null=True)
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
+    apartment = models.ForeignKey(Apartment, on_delete=models.SET_NULL, null=True)
 
 
 class BaseModel(models.Model):
@@ -21,40 +45,78 @@ class BaseModel(models.Model):
         abstract = True
 
 
+class BillType(models.Model):
+    name = models.CharField(max_length=100, null=False)
+
+    def __str__(self):
+        return self.name
+
+
+class PaymentType(models.Model):
+    name = models.CharField(max_length=100, null=False)
+
+    def __str__(self):
+        return self.name
+
+
 class Bill(BaseModel):
-    payment_date = models.DateTimeField(auto_now_add=True)
-    payment_type = models.CharField(max_length=50)
-    description = models.CharField(max_length=100)
-    total = models.DecimalField(decimal_places=2, max_digits=10)
+    payment_date = models.DateTimeField(auto_now=True)
+    payment_type = models.ForeignKey(PaymentType, on_delete=models.PROTECT, null=True)
+    description = RichTextField(null=True, blank=True)
+    total = models.DecimalField(decimal_places=2, max_digits=10, null=True)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    billType = models.ForeignKey(BillType, on_delete=models.PROTECT, null=True)
+
+# Cần chuyển về PROTECT sau (do bill vẫn sẽ tồn tại dù user hay billType có bij xoas)
+
+
+class ApartmentCard(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
 class Storage(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    isEmpty = models.BooleanField(default=True)
+
+    # def __str__(self):
+    #     return 'Storage of ' + self.user.value_to_string()
 
 
-class Items(BaseModel):
-    name = models.CharField(max_length=50)
-    received_date = models.DateTimeField(auto_now_add=True)
+class Item(BaseModel):
+    name = models.CharField(max_length=50, null=False)
+    image = CloudinaryField(null=True)
     storage = models.ForeignKey(Storage, on_delete=models.CASCADE)
+    isReceive = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.name
 
 
 class Report(BaseModel):
-    content = models.CharField(max_length=255)
+    title = models.CharField(max_length=100, null=True)
+    content = RichTextField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
-class LoaiKhaoSoat(models.Model):
+class SurveyType(models.Model):
     name = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.name
 
 
-class KhaoSat(BaseModel):
+class Survey(BaseModel):
     name = models.CharField(max_length=255)
-    loaikhaosoat = models.ForeignKey(LoaiKhaoSoat, on_delete=models.CASCADE)
+    type = models.ForeignKey(SurveyType, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
+    def __str__(self):
+        return self.name
 
-class CauHoi(models.Model):
+
+class Question(models.Model):
     title = models.CharField(max_length=255)
-    khaosoat = models.ForeignKey(KhaoSat, on_delete=models.CASCADE)
+    khaosat = models.ForeignKey(Survey, on_delete=models.CASCADE, null=True)
+
+
+# class Result(models.Model):
