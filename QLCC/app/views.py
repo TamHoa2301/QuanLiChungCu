@@ -157,7 +157,7 @@ class ItemViewset(viewsets.ViewSet, generics.ListAPIView):
             return Response({"error": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
-class BillViewset(viewsets.ViewSet, generics.RetrieveAPIView):
+class BillViewset(viewsets.ViewSet, generics.RetrieveAPIView, generics.CreateAPIView, generics.UpdateAPIView):
     queryset = Bill.objects.filter(active=True)
     serializer_class = serializers.BillDetailsSerializer
 
