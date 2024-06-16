@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import viewsets, generics, status, parsers, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,10 +11,10 @@ class LocationViewset(viewsets.ViewSet, generics.ListAPIView):
     serializer_class = serializers.LocationSerializer
 
 
-class ApartmentViewset(viewsets.ViewSet, generics.ListAPIView):
+class ApartmentViewset(viewsets.ViewSet, generics.ListAPIView, generics.UpdateAPIView):
     queryset = Apartment.objects.all()
     serializer_class = serializers.ApartmentSerializer
-    pagination_class = paginators.ApartmentPaginator
+    # pagination_class = paginators.ApartmentPaginator
 
     def get_queryset(self):
         query_set = self.queryset
@@ -28,6 +29,67 @@ class ApartmentViewset(viewsets.ViewSet, generics.ListAPIView):
                 query_set = query_set.filter(location_id=loc_id)
 
         return query_set
+
+    @action(methods=['post'], detail=True, url_path='move-in')
+    def move_in(self, request, pk):
+        apartment = self.get_object()
+
+        # vi du: /apartments/{pk}/move-in/
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': 'User ID must be provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Kiểm tra và cập nhật trường isFull của Apartment
+        if apartment.isFull:
+            return Response({'error': 'Apartment is already full'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Chuyển user vào căn hộ
+        user.apartment = apartment
+        user.save()
+
+        # Cập nhật trạng thái isFull của apartment
+        apartment.isFull = True
+        apartment.save()
+
+        return Response({'message': f'User {user.username} moved into apartment {apartment.apartmentName}'},
+                        status=status.HTTP_200_OK)
+
+    @action(methods=['post'], detail=True, url_path='move-out')
+    def move_out(self, request, pk):
+        apartment = self.get_object()
+
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': 'User ID must be provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                user = User.objects.select_for_update().get(
+                    id=user_id)  # Sử dụng select_for_update để khóa dữ liệu trong transaction
+
+                if user.apartment != apartment:
+                    return Response({'error': 'User is not in this apartment'}, status=status.HTTP_400_BAD_REQUEST)
+
+                user.apartment = None
+                user.is_active = False  # Đặt is_active = False
+
+                user.save()
+                # Để đảm bảo rằng căn hộ chỉ được đánh dấu là không đầy khi
+                # không có người dùng nào còn sống trong đó.
+                if not apartment.user_set.filter(is_active=True).exists():
+                    apartment.isFull = False
+                    apartment.save()
+
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({'message': f'User {user.username} moved out and account is deactivated'},
+                        status=status.HTTP_200_OK)
 
 
 class StorageViewset(viewsets.ViewSet, generics.ListAPIView):
@@ -126,7 +188,7 @@ class BillViewset(viewsets.ViewSet, generics.RetrieveAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class UserViewset(viewsets.ViewSet, generics.CreateAPIView):
+class UserViewset(viewsets.ViewSet, generics.CreateAPIView, generics.ListAPIView):
     queryset = User.objects.filter(is_active=True)
     serializer_class = serializers.UserSerializer
     parser_classes = [parsers.MultiPartParser, ]
@@ -249,6 +311,22 @@ class UserViewset(viewsets.ViewSet, generics.CreateAPIView):
         survey = user.survey_set.create(title=request.data.get('name'),
                                                      content=request.data.get('link'))
         return Response(serializers.ReportSerializer(survey).data, status=status.HTTP_201_CREATED)
+
+    @action(methods=['get'], url_path='storage', detail=True)
+    def get_storage(self, request, pk):
+        user = self.get_object()
+        storage = Storage.objects.filter(user=user, active=True).first()  # Lấy storage của user
+
+        if not storage:
+            return Response({'message': 'Storage not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        items = storage.item_set.filter(isReceive=False)
+
+        q = request.query_params.get('q')
+        if q:
+            items = items.filter(name__icontains=q)
+
+        return Response(serializers.ItemSerializer(items, many=True).data, status=status.HTTP_200_OK)
 
 
 class ReportViewset(viewsets.ViewSet, generics.ListAPIView, generics.UpdateAPIView, generics.RetrieveAPIView, generics.DestroyAPIView):

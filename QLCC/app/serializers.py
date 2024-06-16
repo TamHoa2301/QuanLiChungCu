@@ -59,9 +59,11 @@ class ItemSerializer(serializers.ModelSerializer):
 
 
 class BillSerializer(serializers.ModelSerializer):
+    billType_name = serializers.CharField(source='billType.name', read_only=True)  # Thêm trường name của billType
+
     class Meta:
         model = Bill
-        fields = ['id', 'billType', 'user', 'total', 'is_paid']
+        fields = ['id', 'billType', 'billType_name', 'user', 'total', 'is_paid']
 
 
 class BillDetailsSerializer(BillSerializer):
