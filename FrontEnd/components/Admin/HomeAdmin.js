@@ -12,7 +12,7 @@ import Item from '../Items/Item';
 
 
 
-const HomeUser = (route) => {
+const HomeAdmin = (route) => {
   const [showMenu, setShowMenu] = useState(false);
   const [userId, setUserId] = useState(null);
   const menuWidth = useRef(new Animated.Value(0)).current;
@@ -42,14 +42,14 @@ const HomeUser = (route) => {
   }, []);
 
   const functions1 = [
-    { id: '1', name: 'Bill', icon: 'home', screen: 'Bill'},
-    { id: '2', name: 'Bill_notPaid', icon: 'cog', screen: 'Bill_notPaid' },
-    { id: '3', name: 'Bill_Paid', icon: 'user', screen: 'Bill_Paid'},
+    { id: '1', name: 'Bill', icon: 'home', screen: 'BillAdmin'},
+    { id: '2', name: 'Report', icon: 'cog', screen: 'ReportAdmin' },
+    { id: '3', name: 'Storage', icon: 'user', screen: 'Storage'},
   ];
   const functions2 = [
-    { id: '1', name: 'User', icon: 'user', screen: 'UserProfile'},
-    { id: '2', name: 'Request', icon: 'cog', screen: 'Request' },
-    { id: '3', name: 'Report', icon: 'user', screen: 'Report'},
+    { id: '1', name: 'Apartment', icon: 'user', screen: 'Apartment'},
+    { id: '2', name: 'UserProfile', icon: 'user', screen: 'UserProfile' },
+    { id: '3', name: 'Items', icon: 'user', screen: 'Items'},
   ];
 
   const image = { uri: 'https://images.pexels.com/photos/17364664/pexels-photo-17364664/free-photo-of-nha-c-a-nha-ngoi-nha-can-nha.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' };
@@ -148,12 +148,12 @@ const styles = StyleSheet.create({
   containerFlatList: {
     top: 60,
     right: 10,
-    left: 40,
     justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 15, // Thiết lập borderRadius cho View bao quanh
     overflow: 'hidden', // Ẩn các phần thừa của hình ảnh
     backgroundColor: 'white',
-    width: '80%',
+    width: '100%',
     height: '10%',
   },
   imageContainer: {
@@ -226,4 +226,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeUser;
+export default HomeAdmin;

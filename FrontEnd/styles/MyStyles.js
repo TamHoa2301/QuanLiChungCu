@@ -12,12 +12,27 @@ export default StyleSheet.create({
     }, wrap: {
         flexWrap: "wrap"
     },margin: {
-        margin: 5
+        borderRadius: 10,
+        margin: 10,
     }, avatar: {
         width: 80,
         height: 80,
         borderRadius: 20
     }, center: {
         alignSelf: "center"
-    }
+    }, loginButton: {
+        height:75,
+        width: '80%',
+        margin: 'auto',
+        backgroundColor: 'pink',
+        justifyContent: 'center',
+    }, image: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        flex:1  ,
+        height: 'auto',
+        width: '90%',
+        left: 40,
+        borderRadius: 10,
+    },
 });
