@@ -20,6 +20,7 @@ from django.urls import path, re_path, include
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from app.admin import admin_site
 
 
 schema_view = get_schema_view(
@@ -36,6 +37,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('', include('app.urls')),
+    # path('admin/', admin_site.urls),
     path('admin/', admin.site.urls),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),

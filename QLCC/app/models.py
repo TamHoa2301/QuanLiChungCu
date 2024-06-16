@@ -33,8 +33,8 @@ class User(AbstractUser):
     avatar = CloudinaryField(null=True)
     dateofBirth = models.DateTimeField(null=True, blank=True)
     phoneNumber = models.CharField(max_length=10, null=True)
-    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
-    apartment = models.ForeignKey(Apartment, on_delete=models.SET_NULL, null=True)
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
+    apartment = models.ForeignKey(Apartment, on_delete=models.SET_NULL, null=True, blank=True)
 
 
 class BaseModel(models.Model):
@@ -61,17 +61,27 @@ class PaymentType(models.Model):
 
 class Bill(BaseModel):
     payment_date = models.DateTimeField(auto_now=True)
-    payment_type = models.ForeignKey(PaymentType, on_delete=models.PROTECT, null=True)
+    # payment_type = models.ForeignKey(PaymentType, on_delete=models.PROTECT, null=True, blank=True)
     description = RichTextField(null=True, blank=True)
     total = models.DecimalField(decimal_places=2, max_digits=10, null=True)
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     billType = models.ForeignKey(BillType, on_delete=models.PROTECT, null=True)
+    is_paid = models.BooleanField(default=False)
 
 # Cần chuyển về PROTECT sau (do bill vẫn sẽ tồn tại dù user hay billType có bij xoas)
 
 
 class ApartmentCard(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+
+class ApartmentCardRequest(BaseModel):
+    title = models.CharField(max_length=100, null=True)
+    content = RichTextField(null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.title
 
 
 class Storage(BaseModel):
@@ -97,26 +107,14 @@ class Report(BaseModel):
     content = RichTextField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
-
-class SurveyType(models.Model):
-    name = models.CharField(max_length=255)
-
     def __str__(self):
-        return self.name
+        return self.title
 
 
 class Survey(BaseModel):
-    name = models.CharField(max_length=255)
-    type = models.ForeignKey(SurveyType, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255, null=True)
+    link = models.CharField(max_length=255, null=True)
 
     def __str__(self):
         return self.name
 
-
-class Question(models.Model):
-    title = models.CharField(max_length=255)
-    khaosat = models.ForeignKey(Survey, on_delete=models.CASCADE, null=True)
-
-
-# class Result(models.Model):

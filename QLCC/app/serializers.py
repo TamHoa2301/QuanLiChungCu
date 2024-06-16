@@ -1,4 +1,4 @@
-from app.models import Apartment, ApartmentCard, User, Location, Report, Storage, Item, Bill
+from app.models import Apartment, Survey, ApartmentCard, User, Location, Report, Storage, Item, Bill, ApartmentCardRequest
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -16,15 +16,6 @@ class ApartmentSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    def to_representation(self, instance):
-        rep = super().to_representation(instance)
-        avatar = instance.avatar
-        if avatar:
-            rep['avatar'] = avatar.url
-        else:
-            rep['avatar'] = None
-
-        return rep
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -36,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'username', 'password', 'email', 'avatar']
+        fields = ['id', 'first_name', 'last_name', 'username', 'password', 'email', 'avatar', 'phoneNumber', 'dateofBirth', 'is_staff']
         extra_kwargs = {
             'password': {
                 'write_only': 'true'
@@ -70,13 +61,25 @@ class ItemSerializer(serializers.ModelSerializer):
 class BillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bill
-        fields = ['id', 'billType', 'user', 'total']
+        fields = ['id', 'billType', 'user', 'total', 'is_paid']
 
 
 class BillDetailsSerializer(BillSerializer):
     class Meta:
         model = BillSerializer.Meta.model
-        fields = BillSerializer.Meta.fields + ['payment_type', 'payment_date', 'description']
+        fields = BillSerializer.Meta.fields + ['payment_date', 'description', 'created_date']
+
+
+class CardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApartmentCard
+        fields = ['user', 'created_date']
+
+
+class CardRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApartmentCardRequest
+        fields = ['title', 'content', 'user', 'created_date']
 
 
 class LoginSerializers(serializers.Serializer):
@@ -107,3 +110,9 @@ class LoginSerializers(serializers.Serializer):
             'access': str(token.access_token),
             'user': UserSerializer(user).data
         }
+
+
+class SurveySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Survey
+        fields = ['name', 'link', 'created_date']

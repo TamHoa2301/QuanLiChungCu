@@ -11,6 +11,9 @@ r.register('items', views.ItemViewset, basename='items')
 r.register('bills', views.BillViewset, basename='bills')
 r.register('users', views.UserViewset, basename='users')
 r.register('reports', views.ReportViewset, basename='reports')
+r.register('cards', views.CardViewset, basename='cards')
+r.register('cardsrequests', views.CardRequestViewset, basename='cardsrequests')
+r.register('surveys', views.SurveyViewset, basename='surveys')
 
 
 urlpatterns = [

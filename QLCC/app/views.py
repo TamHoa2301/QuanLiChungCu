@@ -1,7 +1,7 @@
 from rest_framework import viewsets, generics, status, parsers, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from app.models import Apartment, Location, Storage, Item, Bill, User, Report
+from app.models import Apartment, Location, Storage, Item, Bill, User, Report, ApartmentCardRequest, ApartmentCard, Survey
 from app import serializers, paginators, perms
 
 
@@ -95,9 +95,35 @@ class ItemViewset(viewsets.ViewSet, generics.ListAPIView):
             return Response({"error": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
-class BillViewset(viewsets.ViewSet, generics.ListAPIView):
+class BillViewset(viewsets.ViewSet, generics.RetrieveAPIView):
     queryset = Bill.objects.filter(active=True)
     serializer_class = serializers.BillDetailsSerializer
+
+    def get_permissions(self):
+        if self.action in ['pay_bill']:
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
+    @action(methods=['post'], url_path='pay-bill', detail=True)
+    def pay_bill(self, request, pk):
+        try:
+            bill = self.get_object()
+            bill.is_paid = True
+            bill.save()
+
+            return Response({'message': 'Bill paid successfully'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def list(self, request):
+        queryset = self.queryset
+        bill_type_id = request.query_params.get('billType_id')  # Lấy billType_id từ query params
+
+        if bill_type_id:
+            queryset = queryset.filter(billType_id=bill_type_id)
+
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserViewset(viewsets.ViewSet, generics.CreateAPIView):
@@ -106,7 +132,7 @@ class UserViewset(viewsets.ViewSet, generics.CreateAPIView):
     parser_classes = [parsers.MultiPartParser, ]
 
     def get_permissions(self):
-        if self.action in ['get_current_user']:
+        if self.action in ['get_current_user', 'create_report']:
             return [permissions.IsAuthenticated()]
 
         return [permissions.AllowAny()]
@@ -134,10 +160,113 @@ class UserViewset(viewsets.ViewSet, generics.CreateAPIView):
                                                      content=request.data.get('content'), user=user)
         return Response(serializers.ReportSerializer(report).data, status=status.HTTP_201_CREATED)
 
+    @action(methods=['post'], url_path='card-request', detail=True)
+    def request_card(self, request, pk):
+        user = self.get_object()
+        report = self.get_object().apartmentcardrequest_set.create(title=request.data.get('title'),
+                                                     content=request.data.get('content'), user=user)
+        return Response(serializers.CardRequestSerializer(report).data, status=status.HTTP_201_CREATED)
 
-class ReportViewset(viewsets.ViewSet, generics.ListAPIView, generics.UpdateAPIView):
+    @action(methods=['post'], url_path='card-create', detail=True)
+    def create_card(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)  # Lấy user thông qua pk được truyền vào
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['user'] = user.id  # Gán user_id vào dữ liệu request
+
+        serializer = serializers.CardSerializer(data=data)
+        if serializer.is_valid():
+            card = serializer.save()
+            return Response(serializers.CardSerializer(card).data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='toggle-active')
+    def toggle_active(self, request, pk=None):
+        user = self.get_object()
+        user.is_active = not user.is_active  # Toggle active state
+        user.save()
+
+        return Response({'message': f'User {user.username} {"activated" if user.is_active else "deactivated"}'},
+                        status=status.HTTP_200_OK)
+
+    @action(methods=['get'], url_path='get-cards', detail=True)
+    def get_cards(self, request, pk):
+        user = self.get_object()
+
+        cards = user.apartmentcard_set.filter(active=True).select_related('billType')
+
+        return Response(serializers.CardSerializer(cards, many=True).data, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], url_path='get-bills', detail=True)
+    def get_bills(self, request, pk):
+        user = self.get_object()
+        bill_type_id = request.query_params.get('billType_id')
+
+        bills = user.bill_set.filter(active=True).select_related('billType')
+
+        if bill_type_id:
+            bills = bills.filter(billType_id=bill_type_id)
+
+        return Response(serializers.BillSerializer(bills, many=True).data, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], url_path='get-bills-paid', detail=True)
+    def get_bills_paid(self, request, pk):
+        user = self.get_object()
+        bill_type_id = request.query_params.get('billType_id')
+
+        bills = user.bill_set.filter(active=True, is_paid=True).select_related('billType')
+
+        if bill_type_id:
+            bills = bills.filter(billType_id=bill_type_id)
+
+        return Response(serializers.BillSerializer(bills, many=True).data, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], url_path='get-bills-not-paid', detail=True)
+    def get_bills_not_paid(self, request, pk):
+        user = self.get_object()
+        bill_type_id = request.query_params.get('billType_id')
+
+        bills = user.bill_set.filter(active=True, is_paid=False).select_related('billType')
+
+        if bill_type_id:
+            bills = bills.filter(billType_id=bill_type_id)
+
+        return Response(serializers.BillSerializer(bills, many=True).data, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], url_path='get-reports', detail=True)
+    def get_report(self, request, pk):
+        receipts = self.get_object().report_set.filter(active=True)
+
+        return Response(serializers.ReportSerializer(receipts, many=True).data, status=status.HTTP_200_OK)
+
+    @action(methods=['post'], url_path='create-survey', detail=True)
+    def create_survey(self, request, pk):
+        user = self.get_object()
+        survey = user.survey_set.create(title=request.data.get('name'),
+                                                     content=request.data.get('link'))
+        return Response(serializers.ReportSerializer(survey).data, status=status.HTTP_201_CREATED)
+
+
+class ReportViewset(viewsets.ViewSet, generics.ListAPIView, generics.UpdateAPIView, generics.RetrieveAPIView, generics.DestroyAPIView):
     queryset = Report.objects.filter(active=True)
     serializer_class = serializers.ReportSerializer
     parser_classes = [parsers.MultiPartParser, ]
-    # permission_classes = [perms.ReportOwner,] (generics.DestroyAPIView) chua can thiet
 
+
+class CardRequestViewset(viewsets.ViewSet, generics.ListAPIView, generics.RetrieveAPIView, generics.DestroyAPIView):
+    queryset = ApartmentCardRequest.objects.filter(active=True)
+    serializer_class = serializers.CardRequestSerializer
+
+
+class CardViewset(viewsets.ViewSet, generics.ListAPIView, generics.CreateAPIView):
+    queryset = ApartmentCard.objects.filter(active=True)
+    serializer_class = serializers.CardSerializer
+
+
+class SurveyViewset(viewsets.ViewSet, generics.ListAPIView, generics.CreateAPIView, generics.RetrieveAPIView, generics.DestroyAPIView):
+    queryset = Survey.objects.filter(active=True)
+    serializer_class = serializers.SurveySerializer
