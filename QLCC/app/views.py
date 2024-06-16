@@ -162,18 +162,25 @@ class BillViewset(viewsets.ViewSet, generics.RetrieveAPIView):
     serializer_class = serializers.BillDetailsSerializer
 
     def get_permissions(self):
-        if self.action in ['pay_bill']:
+        if self.action in []:
             return [permissions.IsAuthenticated()]
         return [permissions.AllowAny()]
 
     @action(methods=['post'], url_path='pay-bill', detail=True)
-    def pay_bill(self, request, pk):
+    def pay_bill(self, request, pk=None):
         try:
             bill = self.get_object()
+            if bill.is_paid:
+                return Response({'message': 'Bill has already been paid'}, status=status.HTTP_400_BAD_REQUEST)
+
             bill.is_paid = True
             bill.save()
 
             return Response({'message': 'Bill paid successfully'}, status=status.HTTP_200_OK)
+
+        except Bill.DoesNotExist:
+            return Response({'error': 'Bill not found'}, status=status.HTTP_404_NOT_FOUND)
+
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
